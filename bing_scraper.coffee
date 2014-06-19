@@ -1,6 +1,5 @@
 casper = require("casper").create(
   verbose: true
-  logLevel: "debug"
   waitTimeout: 10000
 )
 fs = require("fs")
@@ -26,7 +25,7 @@ constructOneWayUrl = (departureAirport, arrivalAirport, flightDate) ->
     "e1=#{arrivalCode}",
     "dm1=#{encodedFlightDate}"
   ]
-  BASE_URL + urlConstructuroArray.join("&")
+  BASE_URL + urlConstructorArray.join("&")
 
 retrieveAirportCode = (airportName) ->
   regexMatchResult = /\(([A-Z]{3})\)/.exec(airportName)
@@ -40,6 +39,7 @@ scrapeAirportPairs = (casper, airportPairs, flightDate, dataHolder) ->
     departureAirport = pair[0]
     arrivalAirport = pair[1]
     url = constructOneWayUrl(departureAirport, arrivalAirport, flightDate)
+    console.log url
     completeFlightResults(casper, url, flightDate, dataHolder)
 
 completeFlightResults = (casper, url, flightDate, dataHolder) ->
@@ -61,19 +61,20 @@ completeFlightResults = (casper, url, flightDate, dataHolder) ->
         price: e.querySelector(".price .price").innerHTML
     flightResults["date_retrieved"] = Date.now()
     flightResults["flight_date"] = flightDate
+    @echo JSON.stringify(flightResults)
 
     dataHolder.push.apply(dataHolder, flightResults)
 
-persistScrapeResults = (flightDate, dataHolder) ->
+persistScrapeResults = (dataHolder) ->
   casper.then ->
     jsonData = JSON.stringify(dataHolder)
-    filename = BASE_FILENAME + "-" + flightDate + "-" + Date.now()
+    filename = BASE_FILENAME + "-" + Date.now()
     fs.write(filename, jsonData, "w")
 
 scrape = (casper) ->
   casper.start()
   dataHolder = []
-  scrapeAirportPairs(casper, AIRPORT_PAIRS, "7/14/2014", dataHolder)
+  scrapeAirportPairs(casper, AIRPORT_PAIRS, "07/14/2014", dataHolder)
   persistScrapeResults(dataHolder)
   casper.run()
 

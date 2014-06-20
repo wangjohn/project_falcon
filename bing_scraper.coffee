@@ -39,11 +39,14 @@ scrapeAirportPairs = (casper, airportPairs, flightDate, dataHolder) ->
     departureAirport = pair[0]
     arrivalAirport = pair[1]
     url = constructOneWayUrl(departureAirport, arrivalAirport, flightDate)
-    console.log url
+    console.log(url)
     completeFlightResults(casper, url, flightDate, dataHolder)
 
-completeFlightResults = (casper, url, flightDate, dataHolder) ->
-  casper.thenOpen(url)
+completeFlightResults = (casper, startingUrl, flightDate, dataHolder) ->
+  casper.thenOpen(startingUrl)
+  paginatedFlightResults(casper, flightDate, dataHolder)
+
+paginatedFlightResults = (casper, flightDate, dataHolder) ->
   casper.waitForSelector("#results .resultsTable")
   casper.waitWhileVisible("#fltSearchContainer .SearchParamContainer .searching")
 
@@ -59,11 +62,19 @@ completeFlightResults = (casper, url, flightDate, dataHolder) ->
         duration: e.querySelector(".duration").innerHTML
         stops: e.querySelector(".stops").innerHTML
         price: e.querySelector(".price .price").innerHTML
-    flightResults["date_retrieved"] = Date.now()
-    flightResults["flight_date"] = flightDate
-    @echo JSON.stringify(flightResults)
 
+    for result in flightResults
+      result["date_retrieved"] = Date.now()
+      result["flight_date"] = flightDate
+
+    @echo JSON.stringify(flightResults)
     dataHolder.push.apply(dataHolder, flightResults)
+
+  casper.then ->
+    nextPageSelector = "#pageSelector #nextPage"
+    if @exists(nextPageSelector)
+      @thenClick(nextPageSelector)
+      paginatedFlightResults(@, flightDate, dataHolder)
 
 persistScrapeResults = (dataHolder) ->
   casper.then ->

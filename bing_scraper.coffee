@@ -1,6 +1,7 @@
 casper = require("casper").create(
   verbose: true
-  waitTimeout: 10000
+  logLevel: "info"
+  waitTimeout: 20000
 )
 fs = require("fs")
 
@@ -69,8 +70,8 @@ paginatedFlightResults = (casper, flightDate, dataHolder) ->
     for result in flightResults
       result["date_retrieved"] = Date.now()
       result["flight_date"] = flightDate
+      @log(JSON.stringify(result), "info")
 
-    @echo JSON.stringify(flightResults)
     dataHolder.push.apply(dataHolder, flightResults)
 
   casper.then ->
@@ -79,10 +80,9 @@ paginatedFlightResults = (casper, flightDate, dataHolder) ->
       @thenClick(nextPageSelector)
       paginatedFlightResults(@, flightDate, dataHolder)
 
-persistScrapeResults = (dataHolder) ->
+persistScrapeResults = (dataHolder, filename) ->
   casper.then ->
     jsonData = JSON.stringify(dataHolder)
-    filename = BASE_DIRECTORY + "/" + BASE_FILENAME + "-" + Date.now()
     fs.write(filename, jsonData, "w")
 
 enumerateDates = (startDate, endDate) ->
@@ -99,13 +99,15 @@ enumerateDates = (startDate, endDate) ->
 scrape = (casper) ->
   casper.start()
   dataHolder = []
+  resultsFilename = BASE_DIRECTORY + "/" + BASE_FILENAME + "-" + Date.now()
 
   startDate = new Date(new Date().valueOf() + 1000*60*60*24*3)
   endDate = new Date(startDate.valueOf() + 1000*60*60*24*DATA_COVERAGE_RANGE)
   for flightDate in enumerateDates(startDate, endDate)
     scrapeAirportPairs(casper, AIRPORT_PAIRS, flightDate, dataHolder)
+    persistScrapeResults(dataHolder, resultsFilename)
 
-  persistScrapeResults(dataHolder)
+  persistScrapeResults(dataHolder, resultsFilename)
   casper.run()
 
 scrape(casper)

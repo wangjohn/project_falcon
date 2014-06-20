@@ -6,6 +6,9 @@ fs = require("fs")
 
 BASE_URL = "http://www.bing.com/flights/search?q=flights&ofrom=&form=FDTPSF&b=COACH&p=1&"
 BASE_FILENAME = "bing_flight_data"
+BASE_DIRECTORY = "data"
+
+DATA_COVERAGE_RANGE = 100
 
 AIRPORT_PAIRS = [
   ["O'Hare International Airport (ORD) - Chicago, IL", "Dulles International Airport (IAD) - Washington, DC"]
@@ -79,13 +82,29 @@ paginatedFlightResults = (casper, flightDate, dataHolder) ->
 persistScrapeResults = (dataHolder) ->
   casper.then ->
     jsonData = JSON.stringify(dataHolder)
-    filename = BASE_FILENAME + "-" + Date.now()
+    filename = BASE_DIRECTORY + "/" + BASE_FILENAME + "-" + Date.now()
     fs.write(filename, jsonData, "w")
+
+enumerateDates = (startDate, endDate) ->
+  dateArray = []
+  currentDate = startDate
+  while (currentDate <= endDate)
+    formattedDate = ('0' + (currentDate.getMonth()+1)).slice(-2) + "/" +
+                    ('0' + currentDate.getDate()).slice(-2) + "/" +
+                    currentDate.getFullYear()
+    dateArray.push(formattedDate)
+    currentDate = new Date(currentDate.valueOf() + 1000*60*60*24)
+  dateArray
 
 scrape = (casper) ->
   casper.start()
   dataHolder = []
-  scrapeAirportPairs(casper, AIRPORT_PAIRS, "07/14/2014", dataHolder)
+
+  startDate = new Date(new Date().valueOf() + 1000*60*60*24*3)
+  endDate = new Date(startDate.valueOf() + 1000*60*60*24*DATA_COVERAGE_RANGE)
+  for flightDate in enumerateDates(startDate, endDate)
+    scrapeAirportPairs(casper, AIRPORT_PAIRS, flightDate, dataHolder)
+
   persistScrapeResults(dataHolder)
   casper.run()
 
